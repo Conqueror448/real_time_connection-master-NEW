@@ -1,0 +1,5 @@
+-r base.txt
+
+gunicorn==20.0.4
+uvicorn==0.18.3
+websockets==10.4

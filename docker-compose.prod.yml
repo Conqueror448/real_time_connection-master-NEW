@@ -1,0 +1,69 @@
+services:
+  # ─────────────────────────── Redis (channel-layer) ───────────────────────────
+  redis-prod:
+    image: redis:7-alpine
+    container_name: redis-prod
+    restart: unless-stopped
+    networks:
+      - prod
+    volumes:
+      - redis_data_prod:/data
+
+  # ─────────────────────────── Backend (Django + Channels) ─────────────────────
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: backend-app-prod
+    # ASGI server via Gunicorn-Uvicorn worker pool (production-grade)
+    command: gunicorn app.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/home/app/web/api/static
+    env_file:
+      - ./.env.prod
+    depends_on:
+      - db-prod
+      - redis-prod
+    networks:
+      - prod
+    ports:
+      - "8000:8000"
+
+  # ─────────────────────────── Front-end (React build) ─────────────────────────
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: frontend-prod
+    volumes:
+      - static_volume:/home/app/web/api/static
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_WS_URL=ws://localhost/ws/echo/
+    depends_on:
+      - backend-prod
+    networks:
+      - prod
+    ports:
+      - "80:80"         # Expose static React site on port 80
+
+  # ─────────────────────────── PostgreSQL ──────────────────────────────────────
+  db-prod:
+    image: postgres:13.2-alpine
+    container_name: db-prod
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    env_file:
+      - ./.env.prod.db
+    networks:
+      - prod
+    restart: unless-stopped
+
+# ─────────────────────────── Named volumes/networks ───────────────────────────
+volumes:
+  postgres_data_prod:
+  static_volume:
+  redis_data_prod:
+
+networks:
+  prod:
