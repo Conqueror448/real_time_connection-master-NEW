@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     
     # real-time support
     'channels',                      #  ← NEW
-    'realtime',
+    'inventory',
 ]
 
 MIDDLEWARE = [
